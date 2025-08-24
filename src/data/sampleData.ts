@@ -5,6 +5,7 @@ export const sampleContacts: Contact[] = [
     id: '1',
     nombre: 'Ana Fernandez',
     telefono: '666123456',
+    instagram: 'ana_fernandez95',
     universidad: 'UV',
     titulacion: 'ENFERMERIA',
     curso: 1,

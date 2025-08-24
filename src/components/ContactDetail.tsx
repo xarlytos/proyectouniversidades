@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Edit, Phone, User, GraduationCap, Calendar, Hash, Mail } from 'lucide-react';
+import { X, Edit, Phone, User, GraduationCap, Calendar, Hash, Instagram } from 'lucide-react';
 import { Contact } from '../types';
 
 interface ContactDetailProps {
@@ -48,15 +48,46 @@ export default function ContactDetail({ contact, onClose, onEdit }: ContactDetai
                   <Phone className="w-4 h-4 text-gray-500" />
                   <span className="font-medium text-gray-700">Teléfono</span>
                 </div>
-                <p className="text-gray-900">{contact.telefono || 'No especificado'}</p>
+                <p className="text-gray-900">{contact.telefono || 'N/D'}</p>
               </div>
 
               <div>
                 <div className="flex items-center space-x-2 mb-2">
-                  <Mail className="w-4 h-4 text-gray-500" />
-                  <span className="font-medium text-gray-700">Email</span>
+                  <Instagram className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium text-gray-700">Instagram</span>
                 </div>
-                <p className="text-gray-900">{contact.email || 'No especificado'}</p>
+                <p className="text-gray-900">
+                  {contact.instagram ? (
+                    <a 
+                      href={`https://instagram.com/${contact.instagram.replace('@', '')}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      @{contact.instagram.replace('@', '')}
+                    </a>
+                  ) : 'N/D'}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <GraduationCap className="w-4 h-4 text-gray-500" />
+                  <span className="font-medium text-gray-700">Universidad</span>
+                </div>
+                <p className="text-gray-900">{contact.universidad}</p>
+              </div>
+
+              <div>
+                <span className="font-medium text-gray-700">Titulación</span>
+                <p className="text-gray-900">{contact.titulacion}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <span className="font-medium text-gray-700">Curso</span>
+                <p className="text-gray-900">{contact.curso ? `${contact.curso}º` : 'N/D'}</p>
               </div>
 
               <div>
@@ -64,13 +95,6 @@ export default function ContactDetail({ contact, onClose, onEdit }: ContactDetai
                   <Hash className="w-4 h-4 text-gray-500" />
                   <span className="font-medium text-gray-700">Año de Nacimiento</span>
                 </div>
-                <p className="text-gray-900">{contact.año_nacimiento || 'N/D'}</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <span className="font-medium text-gray-700">Año de Nacimiento</span>
                 <p className="text-gray-900">{contact.año_nacimiento || 'N/D'}</p>
               </div>
 

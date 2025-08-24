@@ -29,7 +29,7 @@ function App() {
   const { getUserPermissions } = usePermissions();
   const [currentPage, setCurrentPage] = useState<'contactos' | 'conteo' | 'usuarios' | 'admin'>('contactos');
   const [contactsFilters, setContactsFilters] = useState<Partial<ContactFilters>>({});
-  const { contacts, addContact, updateContact, deleteContact } = useContacts();
+  const { contacts, addContact, updateContact, deleteContact, deleteMultipleContacts } = useContacts();
 
   const handleNavigateToContacts = (filters: Partial<ContactFilters>) => {
     setContactsFilters(filters);
@@ -78,9 +78,15 @@ function App() {
             onAddContact={addContact}
             onUpdateContact={updateContact}
             onDeleteContact={deleteContact}
+            onDeleteMultipleContacts={deleteMultipleContacts} // Agregar esta línea
             initialFilters={contactsFilters}
             currentUser={user}
-            hasPermission={hasPermission}
+            hasPermission={(action, contactOwnerId) => {
+              if (user?.role === 'admin') return true;
+              if (action === 'view') return hasPermissionWithHierarchy(user?.id || '', contactOwnerId || '');
+              if (action === 'edit') return user?.id === contactOwnerId;
+              return false;
+            }}
           />
         )}
         

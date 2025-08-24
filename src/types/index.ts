@@ -2,6 +2,7 @@ export interface Contact {
   id: string;
   nombre: string;
   telefono?: string;
+  instagram?: string;
   universidad: string;
   titulacion: string;
   curso: number | null;

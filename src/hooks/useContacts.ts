@@ -45,8 +45,11 @@ export function useContacts() {
       ...contactData,
       id: `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       fecha_alta: new Date().toISOString().split('T')[0],
-      comercial_id: currentUser?.id || 'unknown',
-      comercial_nombre: currentUser?.nombre || 'Usuario desconocido'
+      // Mejorar la lógica de asignación del comercial
+      comercial_id: contactData.comercial ? 'excel_import' : (currentUser?.id || 'unknown'),
+      // Si contactData.comercial existe (viene del Excel), usarlo directamente
+      // Si no existe, usar el nombre del usuario actual o 'Usuario desconocido'
+      comercial_nombre: contactData.comercial || (currentUser?.nombre || 'Usuario desconocido')
     };
     
     console.log('➕ Adding new contact:', newContact);
@@ -89,6 +92,19 @@ export function useContacts() {
     }
   }, []);
 
+  // Nueva función para eliminar múltiples contactos
+  const deleteMultipleContacts = useCallback((ids: string[]) => {
+    const count = ids.length;
+    if (window.confirm(`¿Estás seguro de que quieres eliminar ${count} contacto${count > 1 ? 's' : ''}?`)) {
+      console.log('🗑️ Deleting multiple contacts:', ids);
+      
+      setContacts(prev => {
+        const updated = prev.filter(contact => !ids.includes(contact.id));
+        console.log('📊 Total contacts after multiple delete:', updated.length);
+        return updated;
+      });
+    }
+  }, []);
   // Debug function to check current state
   const debugContacts = useCallback(() => {
     console.log('🔍 Current contacts state:', {
@@ -124,13 +140,51 @@ export function useContacts() {
     return false;
   }, []);
 
+  // Función para verificar duplicados
+  const checkDuplicates = useCallback((telefono?: string, instagram?: string, excludeId?: string) => {
+    const duplicates = {
+      telefono: false,
+      instagram: false
+    };
+
+    if (telefono && telefono.trim()) {
+      duplicates.telefono = contacts.some(contact => 
+        contact.telefono === telefono.trim() && contact.id !== excludeId
+      );
+    }
+
+    if (instagram && instagram.trim()) {
+      const cleanInstagram = instagram.replace('@', '').trim();
+      duplicates.instagram = contacts.some(contact => {
+        if (!contact.instagram) return false;
+        const contactInstagram = contact.instagram.replace('@', '').trim();
+        return contactInstagram === cleanInstagram && contact.id !== excludeId;
+      });
+    }
+
+    return duplicates;
+  }, [contacts]);
+
+  // Función para limpiar todos los contactos
+  const clearAllContacts = useCallback(() => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar TODOS los contactos? Esta acción no se puede deshacer.')) {
+      console.log('🗑️ Clearing all contacts');
+      setContacts([]);
+      localStorage.removeItem(STORAGE_KEY);
+      console.log('📊 All contacts cleared');
+    }
+  }, []);
+
   return {
     contacts,
     addContact,
     updateContact,
     deleteContact,
+    deleteMultipleContacts,
+    checkDuplicates,
     debugContacts,
     exportContacts,
-    importContacts
+    importContacts,
+    clearAllContacts
   };
 }

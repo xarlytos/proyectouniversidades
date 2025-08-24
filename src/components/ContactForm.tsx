@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Contact } from '../types';
 import { getUniversities, getTitulacionesByUniversidad } from '../data/universitiesData';
+import { useContacts } from '../hooks/useContacts';
 
 interface ContactFormProps {
   contact?: Contact | null;
@@ -10,13 +11,17 @@ interface ContactFormProps {
 }
 
 export default function ContactForm({ contact, onSubmit, onCancel }: ContactFormProps) {
+  const { checkDuplicates } = useContacts();
+  
   const [formData, setFormData] = useState({
     universidad: '',
     titulacion: '',
     nombre: '',
     curso: null as number | null,
     telefono: '',
-    año_nacimiento: null as number | null
+    instagram: '',
+    año_nacimiento: null as number | null,
+    comercial: ''
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,7 +37,9 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
         nombre: contact.nombre,
         curso: contact.curso,
         telefono: contact.telefono || '',
-        año_nacimiento: contact.año_nacimiento || null
+        instagram: contact.instagram || '',
+        año_nacimiento: contact.año_nacimiento || null,
+        comercial: contact.comercial || ''
       });
       
       // Cargar titulaciones para la universidad del contacto
@@ -74,6 +81,14 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
     return year >= 1900 && year <= currentYear;
   };
 
+  const validateInstagram = (instagram: string) => {
+    if (!instagram) return true; // Es opcional
+    // Remover @ si está presente y validar formato
+    const cleanInstagram = instagram.replace('@', '');
+    const instagramRegex = /^[a-zA-Z0-9._]{1,30}$/;
+    return instagramRegex.test(cleanInstagram);
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
@@ -94,13 +109,37 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
       newErrors.curso = 'El curso es requerido y debe estar entre 1 y 6';
     }
 
-    // Campos opcionales con validación
+    // Validación: al menos uno entre teléfono e Instagram
+    if (!formData.telefono.trim() && !formData.instagram.trim()) {
+      newErrors.contacto = 'Debe proporcionar al menos un número de teléfono o Instagram';
+    }
+
+    // Validaciones de formato
     if (formData.telefono && !validatePhone(formData.telefono)) {
       newErrors.telefono = 'El formato del teléfono no es válido';
     }
 
+    if (formData.instagram && !validateInstagram(formData.instagram)) {
+      newErrors.instagram = 'El formato del Instagram no es válido (solo letras, números, puntos y guiones bajos, máximo 30 caracteres)';
+    }
+
     if (formData.año_nacimiento && !validateBirthYear(formData.año_nacimiento)) {
       newErrors.año_nacimiento = 'El año de nacimiento debe estar entre 1900 y el año actual';
+    }
+
+    // Validación de duplicados
+    const duplicates = checkDuplicates(
+      formData.telefono || undefined,
+      formData.instagram || undefined,
+      contact?.id
+    );
+
+    if (duplicates.telefono) {
+      newErrors.telefono = 'Este número de teléfono ya está registrado';
+    }
+
+    if (duplicates.instagram) {
+      newErrors.instagram = 'Este Instagram ya está registrado';
     }
 
     setErrors(newErrors);
@@ -116,7 +155,9 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
         nombre: formData.nombre,
         curso: formData.curso,
         telefono: formData.telefono || undefined,
-        año_nacimiento: formData.año_nacimiento || undefined
+        instagram: formData.instagram || undefined,
+        año_nacimiento: formData.año_nacimiento || undefined,
+        comercial: formData.comercial || undefined
       };
       
       console.log('📝 Submitting contact form:', submitData);
@@ -236,10 +277,17 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
             )}
           </div>
 
-          {/* 5. Número de teléfono - Opcional */}
+          {/* Mensaje de error general para contacto */}
+          {errors.contacto && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+              <p className="text-red-600 text-sm">{errors.contacto}</p>
+            </div>
+          )}
+
+          {/* 5. Número de teléfono - Opcional pero al menos uno requerido */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Número de teléfono <span className="text-gray-500 font-normal">(opcional)</span>
+              Número de teléfono <span className="text-gray-500 font-normal">(al menos uno requerido)</span>
             </label>
             <input
               type="tel"
@@ -255,7 +303,33 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
             )}
           </div>
 
-          {/* 6. Año de nacimiento - Opcional */}
+          {/* 6. Instagram - Opcional pero al menos uno requerido */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Instagram <span className="text-gray-500 font-normal">(al menos uno requerido)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">@</span>
+              <input
+                type="text"
+                value={formData.instagram}
+                onChange={(e) => handleChange('instagram', e.target.value)}
+                className={`w-full border rounded-md pl-8 pr-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                  errors.instagram ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="usuario_instagram"
+                maxLength={30}
+              />
+            </div>
+            {errors.instagram && (
+              <p className="text-red-500 text-sm mt-1">{errors.instagram}</p>
+            )}
+            <p className="text-xs text-gray-500 mt-1">
+              Solo letras, números, puntos y guiones bajos. Máximo 30 caracteres.
+            </p>
+          </div>
+
+          {/* 7. Año de nacimiento - Opcional */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Año de nacimiento <span className="text-gray-500 font-normal">(opcional)</span>
@@ -273,6 +347,25 @@ export default function ContactForm({ contact, onSubmit, onCancel }: ContactForm
             />
             {errors.año_nacimiento && (
               <p className="text-red-500 text-sm mt-1">{errors.año_nacimiento}</p>
+            )}
+          </div>
+
+          {/* 8. Comercial - Opcional */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Comercial <span className="text-gray-500 font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={formData.comercial}
+              onChange={(e) => handleChange('comercial', e.target.value)}
+              className={`w-full border rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                errors.comercial ? 'border-red-300' : 'border-gray-300'
+              }`}
+              placeholder="Nombre del comercial asignado"
+            />
+            {errors.comercial && (
+              <p className="text-red-500 text-sm mt-1">{errors.comercial}</p>
             )}
           </div>
 

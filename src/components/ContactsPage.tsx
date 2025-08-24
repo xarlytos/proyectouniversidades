@@ -5,12 +5,14 @@ import ContactForm from './ContactForm';
 import ContactDetail from './ContactDetail';
 import { getUniversities, getTitulacionesByUniversidad } from '../data/universitiesData';
 import { User } from '../types/auth';
+import ExcelImportModal from './ExcelImportModal';
 
 interface ContactsPageProps {
   contacts: Contact[];
   onAddContact: (contact: Omit<Contact, 'id' | 'fecha_alta'>) => void;
   onUpdateContact: (id: string, contact: Omit<Contact, 'id' | 'fecha_alta'>) => void;
   onDeleteContact: (id: string) => void;
+  onDeleteMultipleContacts: (ids: string[]) => void; // Agregar esta prop
   initialFilters?: Partial<ContactFilters>;
   currentUser: User | null;
   hasPermission: (action: 'view' | 'edit', contactOwnerId?: string) => boolean;
@@ -21,6 +23,7 @@ export default function ContactsPage({
   onAddContact,
   onUpdateContact,
   onDeleteContact,
+  onDeleteMultipleContacts, // Agregar esta prop
   initialFilters = {},
   currentUser,
   hasPermission
@@ -37,6 +40,7 @@ export default function ContactsPage({
   const [viewingContact, setViewingContact] = useState<Contact | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
+  const [showImportModal, setShowImportModal] = useState(false);
   const contactsPerPage = 10;
 
   const universities = getUniversities();
@@ -123,70 +127,66 @@ export default function ContactsPage({
     }
   };
 
-  // Función para importar Excel
-  const handleImportExcel = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      // Aquí implementarías la lógica para leer el archivo Excel
-      // Por ahora, solo mostramos un mensaje
-      console.log('Importando archivo Excel:', file.name);
-      alert('Funcionalidad de importar Excel en desarrollo');
-    }
+  const handleImportContacts = (importedContacts: Omit<Contact, 'id' | 'fecha_alta'>[]) => {
+    importedContacts.forEach(contact => {
+      onAddContact(contact, currentUser); // Agregar currentUser aquí
+    });
   };
 
-  // Función para exportar PDF
   const handleExportPDF = () => {
     const selectedContactsData = contacts.filter(contact => selectedContacts.has(contact.id));
     if (selectedContactsData.length === 0) {
       alert('Por favor, selecciona al menos un contacto para exportar');
       return;
     }
-    // Aquí implementarías la lógica para generar el PDF
     console.log('Exportando contactos a PDF:', selectedContactsData);
     alert(`Exportando ${selectedContactsData.length} contactos a PDF (funcionalidad en desarrollo)`);
   };
 
+  // Nueva función para manejar eliminación múltiple
+  const handleDeleteSelected = () => {
+    const selectedIds = Array.from(selectedContacts);
+    onDeleteMultipleContacts(selectedIds);
+    setSelectedContacts(new Set()); // Limpiar selección después de eliminar
+  };
+
   return (
     <div className="p-6">
+      {/* Header con botones principales */}
       <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contactos</h1>
-          <p className="text-gray-600">{filteredContacts.length} contactos encontrados</p>
-          {selectedContacts.size > 0 && (
-            <p className="text-blue-600 text-sm">{selectedContacts.size} contactos seleccionados</p>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold text-gray-900">Contactos</h1>
         <div className="flex space-x-3">
-          {/* Botón de exportar PDF */}
           {selectedContacts.size > 0 && (
-            <button
-              onClick={handleExportPDF}
-              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Exportar PDF ({selectedContacts.size})
-            </button>
+            <>
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar ({selectedContacts.size})
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Exportar PDF ({selectedContacts.size})
+              </button>
+            </>
           )}
-          
-          {/* Botón de importar Excel */}
-          <label className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors cursor-pointer">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center"
+          >
             <Upload className="w-4 h-4 mr-2" />
             Importar Excel
-            <input
-              type="file"
-              accept=".xlsx,.xls"
-              onChange={handleImportExcel}
-              className="hidden"
-            />
-          </label>
-          
-          {/* Botón de añadir contacto */}
+          </button>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Añadir Contacto
+            Nuevo Contacto
           </button>
         </div>
       </div>
@@ -292,6 +292,9 @@ export default function ContactsPage({
                   Teléfono
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Instagram
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Universidad
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -333,6 +336,18 @@ export default function ContactsPage({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {contact.telefono || 'N/D'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {contact.instagram ? (
+                      <a 
+                        href={`https://instagram.com/${contact.instagram.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        @{contact.instagram.replace('@', '')}
+                      </a>
+                    ) : 'N/D'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {contact.universidad}
@@ -417,64 +432,73 @@ export default function ContactsPage({
                 </div>
                 <div>
                   <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Anterior
-                    </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                       <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                          page === currentPage
-                            ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {page}
+                        Anterior
                       </button>
-                    ))}
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Siguiente
-                    </button>
-                  </nav>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            page === currentPage
+                              ? 'z-10 bg-blue-500 border-blue-500 text-blue-600'
+                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Siguiente
+                      </button>
+                    </nav>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Modals */}
+        {showForm && (
+          <ContactForm
+            contact={editingContact}
+            onSubmit={handleFormSubmit}
+            onCancel={() => {
+              setShowForm(false);
+              setEditingContact(null);
+            }}
+          />
+        )}
+
+        {viewingContact && (
+          <ContactDetail
+            contact={viewingContact}
+            onClose={() => setViewingContact(null)}
+            onEdit={() => {
+              setEditingContact(viewingContact);
+              setShowForm(true);
+              setViewingContact(null);
+            }}
+          />
+        )}
+
+        {showImportModal && (
+          <ExcelImportModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            onImport={handleImportContacts}
+            existingContacts={contacts}
+          />
         )}
       </div>
-
-      {/* Modals */}
-      {showForm && (
-        <ContactForm
-          contact={editingContact}
-          onSubmit={handleFormSubmit}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingContact(null);
-          }}
-        />
-      )}
-
-      {viewingContact && (
-        <ContactDetail
-          contact={viewingContact}
-          onClose={() => setViewingContact(null)}
-          onEdit={() => {
-            setEditingContact(viewingContact);
-            setShowForm(true);
-            setViewingContact(null);
-          }}
-        />
-      )}
-    </div>
-  );
+    );
 }
